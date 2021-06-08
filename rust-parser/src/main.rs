@@ -1,11 +1,11 @@
 use comments::parser;
+use data::obtain_data;
 
 mod comments;
+mod data;
 
 fn main() {
-    println!("Hello, world!");
-
-    match parser() {
+    match parser(obtain_data()) {
         Ok(()) => println!("\nSuccessfully Parsed JSON!"),
         _ => println!("\nFailed Parsing JSON"),
     };
