@@ -3,3 +3,4 @@ package-lock.json
 
 rust-parser/target/
 rust-parser/Cargo.lock
+rust-parser/output.txt
