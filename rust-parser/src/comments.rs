@@ -31,12 +31,12 @@ struct FirstStepComments {
 struct FinalComment {
     comment_id: String,
     comment: String,
-    depth: u32
+    depth: u32,
 }
 
 #[derive(Debug, Clone)]
 struct FinalComments {
-    comments: Vec<FinalComment>
+    comments: Vec<FinalComment>,
 }
 
 impl FirstStepComments {
@@ -152,11 +152,15 @@ impl FirstStepComments {
     }
 }
 
-fn find_replies(comment: &FirstStepComment, res: Vec<FinalComment>, depth: u32) -> Vec<FinalComment> {
+fn find_replies(
+    comment: &FirstStepComment,
+    res: Vec<FinalComment>,
+    depth: u32,
+) -> Vec<FinalComment> {
     let without_replies = FinalComment {
         comment_id: comment.clone().comment_id,
         comment: comment.clone().comment,
-        depth: depth
+        depth: depth,
     };
 
     let mut result = res.clone();
@@ -164,7 +168,7 @@ fn find_replies(comment: &FirstStepComment, res: Vec<FinalComment>, depth: u32) 
 
     if !comment.clone().final_replies.is_empty() {
         for reply in comment.clone().final_replies.iter() {
-            let mut tmp_res =  find_replies(reply, result.clone(), depth + 1);
+            let mut tmp_res = find_replies(reply, result.clone(), depth + 1);
             for r in tmp_res.iter_mut() {
                 result.push(r.clone());
             }
@@ -187,7 +191,7 @@ impl FinalComments {
         }
 
         FinalComments {
-            comments: all_comments
+            comments: all_comments,
         }
     }
 
@@ -195,7 +199,7 @@ impl FinalComments {
         let initial_comments = self.comments.clone();
 
         let size = comment_ids.len();
-        let mut found_vector : Vec<bool> = Vec::with_capacity(size);
+        let mut found_vector: Vec<bool> = Vec::with_capacity(size);
         for _ in 0..size {
             found_vector.push(false);
         }
@@ -203,18 +207,17 @@ impl FinalComments {
         let mut final_comments: Vec<FinalComment> = vec![];
         for i in 0..initial_comments.len() {
             let index = comment_ids
-                            .iter()
-                            .position(|x| *x == initial_comments[i].comment_id)
-                            .unwrap();
+                .iter()
+                .position(|x| *x == initial_comments[i].comment_id)
+                .unwrap();
             if !found_vector[index] {
                 final_comments.push(initial_comments[i].clone());
                 found_vector[index] = true;
-            }   
+            }
         }
 
-
         FinalComments {
-            comments: final_comments
+            comments: final_comments,
         }
     }
 }
