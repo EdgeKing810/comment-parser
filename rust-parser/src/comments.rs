@@ -27,6 +27,18 @@ struct FirstStepComments {
     comments: Vec<FirstStepComment>,
 }
 
+#[derive(Debug, Clone)]
+struct FinalComment {
+    comment_id: String,
+    comment: String,
+    depth: u32
+}
+
+#[derive(Debug, Clone)]
+struct FinalComments {
+    comments: Vec<FinalComment>
+}
+
 impl FirstStepComments {
     fn find_comment(&self, comment_id: String) -> Option<FirstStepComment> {
         for comment in self.comments.iter() {
@@ -140,14 +152,90 @@ impl FirstStepComments {
     }
 }
 
+fn find_replies(comment: &FirstStepComment, res: Vec<FinalComment>, depth: u32) -> Vec<FinalComment> {
+    let without_replies = FinalComment {
+        comment_id: comment.clone().comment_id,
+        comment: comment.clone().comment,
+        depth: depth
+    };
+
+    let mut result = res.clone();
+    result.push(without_replies);
+
+    if !comment.clone().final_replies.is_empty() {
+        for reply in comment.clone().final_replies.iter() {
+            let mut tmp_res =  find_replies(reply, result.clone(), depth + 1);
+            for r in tmp_res.iter_mut() {
+                result.push(r.clone());
+            }
+        }
+        return result;
+    } else {
+        return result;
+    }
+}
+
+impl FinalComments {
+    fn construct(c: FirstStepComments) -> FinalComments {
+        let mut all_comments: Vec<FinalComment> = vec![];
+
+        for comment in c.comments.iter() {
+            let mut all_replies = find_replies(comment, Vec::<FinalComment>::new(), 0);
+            for reply in all_replies.iter_mut() {
+                all_comments.push(reply.clone());
+            }
+        }
+
+        FinalComments {
+            comments: all_comments
+        }
+    }
+
+    fn sort(self, comment_ids: Vec<String>) -> FinalComments {
+        let initial_comments = self.comments.clone();
+
+        let size = comment_ids.len();
+        let mut found_vector : Vec<bool> = Vec::with_capacity(size);
+        for _ in 0..size {
+            found_vector.push(false);
+        }
+
+        let mut final_comments: Vec<FinalComment> = vec![];
+        for i in 0..initial_comments.len() {
+            let index = comment_ids
+                            .iter()
+                            .position(|x| *x == initial_comments[i].comment_id)
+                            .unwrap();
+            if !found_vector[index] {
+                final_comments.push(initial_comments[i].clone());
+                found_vector[index] = true;
+            }   
+        }
+
+
+        FinalComments {
+            comments: final_comments
+        }
+    }
+}
+
 pub fn parser(data: &str) -> Result<()> {
     let c: Comments = serde_json::from_str(data)?;
 
-    let final_comments = FirstStepComments::get_replies(c).construct_replies();
-    let depth = final_comments.get_depth();
+    let mut comment_ids: Vec<String> = vec![];
+    for comm in c.comments.iter() {
+        comment_ids.push(comm.comment_id.clone());
+    }
 
-    println!("{:#?}", final_comments);
-    println!("\nDepth: {}", depth);
+    let mut comments = FirstStepComments::get_replies(c);
+    let depth = comments.get_depth();
+    comments = comments.construct_replies();
+
+    println!("\nDepth: {}\n", depth);
+    println!("Exploded:\n\n{:#?}", comments);
+
+    let final_comments = FinalComments::construct(comments).sort(comment_ids);
+    println!("\nFinal:\n\n{:#?}", final_comments);
 
     Ok(())
 }
