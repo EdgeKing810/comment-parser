@@ -1,10 +1,18 @@
-import fs from 'fs';
-import comments from './comments.js';
+import fs from "fs";
+import comments from "./comments.js";
 
-let copiedComments = [...comments].sort((a, b) => new Date(a) - new Date(b));
+// Sort comments in ascending order of when posted
+let copiedComments = [...comments].sort(
+  (a, b) => new Date(a.posted_on) - new Date(b.posted_on)
+);
 
+let uniqueComments = [];
+
+// Find replies for each comment and add their commentID to an array
+// Also, add each commentID to the uniqueComments array
 copiedComments = copiedComments.map((c) => {
   let updatedComment = { ...c };
+  uniqueComments.push(c.commentID);
   const replies = copiedComments
     .filter((r) => r.reply_to === updatedComment.commentID)
     .map((r) => r.commentID);
@@ -12,12 +20,11 @@ copiedComments = copiedComments.map((c) => {
   return updatedComment;
 });
 
+// Find max depth of replies in all comments
 let maxLength = 0;
-let uniqueComments = [];
 for (let i = 0; i < copiedComments.length; i++) {
   let currentLength = 1;
   let currentComment = { ...copiedComments[i] };
-  uniqueComments.push(currentComment.commentID);
   while (currentComment.reply_to) {
     currentComment = copiedComments.find(
       (c) => c.commentID === currentComment.reply_to
@@ -28,26 +35,27 @@ for (let i = 0; i < copiedComments.length; i++) {
   maxLength = currentLength > maxLength ? currentLength : maxLength;
 }
 
+// Add correct replies array to all comments/replies
 for (let count = 0; count < maxLength; count++) {
   let finalComments = [];
 
   for (let i = 0; i < copiedComments.length; i++) {
     let currentComment = { ...copiedComments[i] };
-    let replies = [
-      ...copiedComments[i].replies.filter((r) => typeof r === 'string'),
-    ];
+    let replies = copiedComments[i].replies.filter(
+      (r) => typeof r === "string"
+    );
     let newReplies = copiedComments.filter(
       (c) =>
         replies.includes(c.commentID) &&
         (c.replies.length === 0 ||
-          c.replies.every((r) => typeof r !== 'string'))
+          c.replies.every((r) => typeof r !== "string"))
     );
 
     if (newReplies.length > 0) {
       let newIDs = newReplies.map((r) => r.commentID);
-      let notFoundReplies = [...replies].filter((r) => !newIDs.includes(r));
+      let notFoundReplies = replies.filter((r) => !newIDs.includes(r));
       let diff = currentComment.replies.filter(
-        (d) => typeof d !== 'string' && !newIDs.includes(d.commentID)
+        (d) => typeof d !== "string" && !newIDs.includes(d.commentID)
       );
 
       currentComment.replies = [...newReplies, ...notFoundReplies, ...diff];
@@ -55,12 +63,12 @@ for (let count = 0; count < maxLength; count++) {
     finalComments.push(currentComment);
   }
 
-  copiedComments = [...finalComments];
+  copiedComments = finalComments;
 }
 
 copiedComments = copiedComments.filter((c) => !c.reply_to);
 
-let flattenedComments = [];
+// Recursive function to get all replies of a particular comment
 const getReplies = (comment, found, depth) => {
   const withoutReplies = { ...comment, depth: depth };
   delete withoutReplies.replies;
@@ -72,6 +80,9 @@ const getReplies = (comment, found, depth) => {
   }
 };
 
+// Remove all replies field to flatten the array into the good order
+// of comments while introducing a depth field
+let flattenedComments = [];
 for (let i = 0; i < copiedComments.length; i++) {
   const currentComments = getReplies(copiedComments[i], [], 0).flat(maxLength);
   const commentIDs = currentComments.map((c) => c.commentID);
@@ -83,5 +94,5 @@ for (let i = 0; i < copiedComments.length; i++) {
 
 flattenedComments = flattenedComments.flat(maxLength);
 
-fs.writeFileSync('./comments.json', JSON.stringify(copiedComments));
-fs.writeFileSync('./flatten.json', JSON.stringify(flattenedComments));
+fs.writeFileSync("./comments.json", JSON.stringify(copiedComments));
+fs.writeFileSync("./flatten.json", JSON.stringify(flattenedComments));
