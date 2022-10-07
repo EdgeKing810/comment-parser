@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Comment {
@@ -25,6 +26,7 @@ struct FirstStepComment {
 #[derive(Debug, Clone)]
 struct FirstStepComments {
     comments: Vec<FirstStepComment>,
+    comment_id_index_map: HashMap<String, usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,19 +43,17 @@ struct FinalComments {
 
 impl FirstStepComments {
     fn find_comment(&self, comment_id: String) -> Option<FirstStepComment> {
-        for comment in self.comments.iter() {
-            if comment.comment_id == comment_id {
-                return Some(comment.clone());
-            }
+        match self.comment_id_index_map.get(&comment_id) {
+            Some(index) => Some(self.comments[*index].clone()),
+            None => None,
         }
-
-        None
     }
 
     fn get_replies(c: Comments) -> FirstStepComments {
         let mut final_comments = Vec::<FirstStepComment>::new();
+        let mut comment_id_index_map = HashMap::<String, usize>::new();
 
-        for comment in c.comments.iter() {
+        for (index, comment) in c.comments.iter().enumerate() {
             let mut replies = Vec::<String>::new();
             for reply in c.comments.iter() {
                 if reply.reply_to == comment.comment_id {
@@ -68,10 +68,12 @@ impl FirstStepComments {
                 initial_replies: replies,
                 final_replies: vec![],
             });
+            comment_id_index_map.insert(comment.comment_id.clone(), index);
         }
 
         FirstStepComments {
             comments: final_comments,
+            comment_id_index_map,
         }
     }
 
@@ -96,16 +98,17 @@ impl FirstStepComments {
                 depth = current_depth;
             }
         }
-
         depth
     }
 
     fn construct_replies(&mut self) -> FirstStepComments {
         let depth = self.get_depth();
         let mut copied_comments = self.comments.clone();
+        let mut comment_id_index_map = self.comment_id_index_map.clone();
 
         for _n in 0..depth {
             let mut final_comments = Vec::<FirstStepComment>::new();
+            let mut final_comment_id_index_map = HashMap::<String, usize>::new();
 
             for i in 0..(copied_comments.len()) {
                 let current_comment = &copied_comments[i];
@@ -138,9 +141,11 @@ impl FirstStepComments {
                 };
 
                 final_comments.push(new_comment);
+                final_comment_id_index_map.insert(current_comment.comment_id.clone(), i);
             }
 
             copied_comments = final_comments;
+            comment_id_index_map = final_comment_id_index_map;
         }
 
         FirstStepComments {
@@ -148,6 +153,7 @@ impl FirstStepComments {
                 .into_iter()
                 .filter(|c| c.reply_to.is_empty())
                 .collect::<Vec<FirstStepComment>>(),
+            comment_id_index_map,
         }
     }
 }
@@ -160,7 +166,7 @@ fn find_replies(
     let without_replies = FinalComment {
         comment_id: comment.clone().comment_id,
         comment: comment.clone().comment,
-        depth: depth,
+        depth,
     };
 
     let mut result = res.clone();
